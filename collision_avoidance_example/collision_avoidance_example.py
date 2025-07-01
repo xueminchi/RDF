@@ -30,7 +30,7 @@ from panda_layer.panda_layer import PandaLayer
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 robot = PandaLayer(device)
 bp_sdf = bf_sdf.BPSDF(8,-1.0,1.0,robot,device)
-bp_sdf_model = torch.load(os.path.join(CUR_PATH,'../models/BP_8.pt'))
+bp_sdf_model = torch.load(os.path.join(CUR_PATH,'../models/BP_8.pt'), weights_only=False)
 
 def main_loop():
 
@@ -42,7 +42,6 @@ def main_loop():
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
     p.configureDebugVisualizer(lightPosition=[5, 5, 5])
     p.setPhysicsEngineParameter(maxNumCmdPer1ms=1000)
-    #p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=110, cameraPitch=-10, cameraTargetPosition=[0, 0, 0.5])
     # p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=90, cameraPitch=0, cameraTargetPosition=[0, 0, 0.5])
     #p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=110, cameraPitch=-25, cameraTargetPosition=[0, 0, 0.5])
     p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=145, cameraPitch=-10, cameraTargetPosition=[0, 0, 0.6])

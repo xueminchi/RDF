@@ -31,10 +31,6 @@ class PandaLayer(torch.nn.Module):
         self.device = device
         self.mesh_path = mesh_path
         self.meshes = self.load_meshes()
-
-        # self.theta_min = [-2.3093, -1.5133, -2.4937, -2.7478, -2.4800, 0.8521, -2.6895]
-        # self.theta_max = [ 2.3093,  1.5133,  2.4937, -0.4461,  2.4800, 4.2094,  2.6895]
-
         self.theta_min = torch.tensor([-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175,  -2.8973]).to(self.device)
         self.theta_max = torch.tensor([ 2.8973,	1.7628,	 2.8973,  -0.0698,  2.8973,	3.7525,	 2.8973]).to(self.device)
         self.theta_mid = (self.theta_min + self.theta_max) / 2.0
@@ -111,7 +107,6 @@ class PandaLayer(torch.nn.Module):
 
     def load_meshes(self):
         check_normal = False
-        # mesh_path = os.path.dirname(os.path.realpath(__file__)) + "/meshes/visual/*.stl"
         mesh_files = glob.glob(self.mesh_path)
         mesh_files = [f for f in mesh_files if os.path.isfile(f)]
         meshes = {}
@@ -124,17 +119,10 @@ class PandaLayer(torch.nn.Module):
             mesh = trimesh.load(mesh_file)
             triangle_areas = trimesh.triangles.area(mesh.triangles)
             vert_area_weight = []
-            # for i in range(mesh.vertices.shape[0]):
-            #     vert_neighour_face = np.where(mesh.faces == i)[0]
-            #     vert_area_weight.append(1000000*triangle_areas[vert_neighour_face].mean())
             temp = torch.ones(mesh.vertices.shape[0], 1).float()
             meshes[name] = [
                 torch.cat((torch.FloatTensor(np.array(mesh.vertices)), temp), dim=-1).to(self.device),
-                # torch.LongTensor(np.asarray(mesh.faces)).to(self.device),
                 mesh.faces,
-                # torch.FloatTensor(np.asarray(vert_area_weight)).to(self.device),
-                # vert_area_weight,
-                # torch.FloatTensor(mesh.vertex_normals)
                 torch.cat((torch.FloatTensor(np.array(mesh.vertex_normals)), temp), dim=-1).to(self.device).to(torch.float),
             ]
         return meshes
@@ -444,5 +432,4 @@ if __name__ == "__main__":
     pose = torch.from_numpy(np.identity(4)).to(device).reshape(-1, 4, 4).expand(len(theta),-1,-1).float()
     robot_mesh = panda.get_forward_robot_mesh(pose, theta)
     robot_mesh = np.sum(robot_mesh)
-    trimesh.exchange.export.export_mesh(robot_mesh, os.path.join('output_meshes',f"whole_body_levelset_0.stl"))
     robot_mesh.show()
