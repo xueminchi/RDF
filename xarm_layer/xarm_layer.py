@@ -33,13 +33,16 @@ def save_to_mesh(vertices, faces, output_mesh_path=None):
     print('Output mesh save to: ', os.path.abspath(output_mesh_path))
 
 mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_learned_urdf/xarm_description/meshes/xarm7/visual/*.stl')
-
+# mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_urdf/xarm_description/meshes/xarm7/visual/*.stl')
+# 
 class PandaLayer(torch.nn.Module):
     def __init__(self, device='cpu', mesh_path = mp):
         super().__init__()
         dir_path = os.path.split(os.path.abspath(__file__))[0]
         self.device = device
-        self.urdf_path = os.path.join(dir_path, '../collision_avoidance_example/xarm7_learned_urdf/xarm7_robot.urdf')
+        # self.urdf_path = os.path.join(dir_path, '../collision_avoidance_example/xarm7_learned_urdf/xarm7_robot.urdf')
+        self.urdf_path = os.path.join(dir_path, '../collision_avoidance_example/xarm7_urdf/xarm7_robot.urdf')
+
         self.mesh_path = mesh_path
         print('', self.mesh_path)
         info_chain = pk.build_chain_from_urdf(open(self.urdf_path, mode="rb").read())
@@ -65,6 +68,9 @@ class PandaLayer(torch.nn.Module):
             name = os.path.splitext(os.path.basename(mesh_file))[0] 
             mesh = trimesh.load(mesh_file, force='mesh')
             meshes[name] = mesh
+
+            # mesh.show()
+        
         return meshes
 
     def forward_kinematics(self, theta):
@@ -72,6 +78,8 @@ class PandaLayer(torch.nn.Module):
         transformations = {}
         for k in ret.keys():
             trans_mat = ret[k].get_matrix()
+            # make trans_mat identity
+            # trans_mat = torch.eye(4, device=self.device).float().unsqueeze(0).expand(1, 4, 4)
             transformations[k.split('_')[-1]] = trans_mat
         return transformations
     
@@ -106,36 +114,6 @@ class PandaLayer(torch.nn.Module):
         pos = poses[link][:, :3, 3]
         rot = poses[link][:, :3, :3]
         return  pos, rot
-
-
-    def get_forward_vertices(self, pose, theta):
-        batch_size = pose.size()[0]
-        outputs = self.forward(pose, theta)
-
-        robot_vertices = torch.cat((
-                                   outputs[0].view(batch_size, -1, 3),
-                                   outputs[1].view(batch_size, -1, 3),
-                                   outputs[2].view(batch_size, -1, 3),
-                                   outputs[3].view(batch_size, -1, 3),
-                                   outputs[4].view(batch_size, -1, 3),
-                                   outputs[5].view(batch_size, -1, 3),
-                                   outputs[6].view(batch_size, -1, 3),
-                                   outputs[7].view(batch_size, -1, 3),
-                                   outputs[8].view(batch_size, -1, 3)), 1)  # .squeeze()
-
-        robot_vertices_normal = torch.cat((
-                                   outputs[9].view(batch_size, -1, 3),
-                                   outputs[10].view(batch_size, -1, 3),
-                                   outputs[11].view(batch_size, -1, 3),
-                                   outputs[12].view(batch_size, -1, 3),
-                                   outputs[13].view(batch_size, -1, 3),
-                                   outputs[14].view(batch_size, -1, 3),
-                                   outputs[15].view(batch_size, -1, 3),
-                                   outputs[16].view(batch_size, -1, 3),
-                                   outputs[17].view(batch_size, -1, 3)), 1)  # .squeeze()
-
-        return robot_vertices,robot_vertices_normal
-
 
 
 if __name__ == "__main__":

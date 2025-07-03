@@ -14,7 +14,7 @@ import skimage
 import pyrender
 import torch
 
-mesh_path = os.path.dirname(os.path.realpath(__file__)) + "/xarm_layer/meshes/*.stl"
+mesh_path = os.path.dirname(os.path.realpath(__file__)) + "/panda_layer/meshes/visual/*.stl"
 mesh_files = glob.glob(mesh_path)
 mesh_files = sorted(mesh_files)
 print(mesh_files)
@@ -65,7 +65,7 @@ for mf in mesh_files:
         os.mkdir(save_path)
     np.save(os.path.join(save_path,f'voxel_128_{mesh_name}.npy'), data)
 
-    # # for visualization
+    # for visualization
     # data = np.load(os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)),f'data/sdf_points/voxel_128_{mesh_name}.npy')), allow_pickle=True).item()
     # random_points = data['random_points']
     # random_sdf = data['random_sdf']

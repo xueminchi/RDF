@@ -14,7 +14,8 @@ import trimesh
 import utils
 import mesh_to_sdf
 import skimage
-from panda_layer.panda_layer_textured_gripper import PandaLayer
+# from panda_layer.panda_layer_textured_gripper import PandaLayer
+from xarm_layer.xarm_layer import PandaLayer
 import argparse
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -80,7 +81,6 @@ class BPSDF():
             "link5",
             "link6",
             "link7",
-            "xarm_gripper_base_link"
         ]
         # 获取所有文件
         mesh_files = glob.glob(os.path.join(CUR_DIR, "xarm_layer/meshes/*.stl"))
@@ -290,25 +290,37 @@ if __name__ =='__main__':
     panda = PandaLayer(args.device)
     bp_sdf = BPSDF(args.n_func,args.domain_min,args.domain_max,panda,args.device)
     
-    # args.train = True
+    args.train = False
 
     # #  train Bernstein Polynomial model   
     if args.train:
         bp_sdf.train_bf_sdf()
 
-    # exit()
+
     # load trained model
     model_path = f'models_xarm/BP_{args.n_func}.pt'
     model = torch.load(model_path, weights_only=False)
     
+    # obseve the offset of 
+    offset = model[0]['offset'].cpu().numpy()
+    scale = model[0]['scale']
+    print(f'offset: {offset}, scale: {scale}')
+    
     # visualize the Bernstein Polynomial model for each robot link
-    bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
-    exit()
+    # bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
+
     # visualize the Bernstein Polynomial model for the whole body
     theta = torch.tensor([0, -0.3, 0, -2.2, 0, 2.0, np.pi/4]).float().to(args.device).reshape(-1,7)
     pose = torch.from_numpy(np.identity(4)).to(args.device).reshape(-1, 4, 4).expand(len(theta),4,4).float()
-    trans_list = panda.get_transformations_each_link(pose,theta)
+
+    trans_list = panda.forward_kinematics(theta)
+    print(trans_list.keys())
+
+
     trans_list = list(trans_list.values())
+    print(len(trans_list))
+    print(trans_list)
+    trans_list = trans_list[1:]
     utils.visualize_reconstructed_whole_body(model, trans_list, tag=f'BP_{args.n_func}')
     
 
