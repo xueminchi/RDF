@@ -32,24 +32,19 @@ def save_to_mesh(vertices, faces, output_mesh_path=None):
             fp.write('f %d %d %d\n' % (face[0], face[1], face[2]))
     print('Output mesh save to: ', os.path.abspath(output_mesh_path))
 
-# mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_gripper_urdf/xarm_description/meshes/xarm7/visual/*.stl')
-
-mp = [
-    os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_gripper_urdf/xarm_description/meshes/xarm7/visual/*.stl'),
-    os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_gripper_urdf/xarm_gripper/meshes/*.STL')  # 注意大写 .STL
-]
+mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_urdf/xarm_description/meshes/xarm7/visual/*.stl')
 
 class PandaLayer(torch.nn.Module):
     def __init__(self, device='cpu', mesh_path = mp):
         super().__init__()
         dir_path = os.path.split(os.path.abspath(__file__))[0]
         self.device = device
-        self.urdf_path = os.path.join(dir_path, '../collision_avoidance_example/xarm7_gripper_urdf/xarm7_with_gripper.urdf')
-        self.mesh_path_list = mesh_path
-        print('', self.mesh_path_list)
+        self.urdf_path = os.path.join(dir_path, '../collision_avoidance_example/xarm7_urdf/xarm7_robot.urdf')
+        self.mesh_path = mesh_path
+        print('', self.mesh_path)
         info_chain = pk.build_chain_from_urdf(open(self.urdf_path, mode="rb").read())
         print('The kinematics chain of the arm is ', info_chain)
-        self.chain = pk.build_serial_chain_from_urdf(open(self.urdf_path).read().encode(),"xarm_gripper_base_link").to(dtype = torch.float32,device = self.device)
+        self.chain = pk.build_serial_chain_from_urdf(open(self.urdf_path).read().encode(),"link_eef").to(dtype = torch.float32,device = self.device)
         joint_lim = torch.tensor(self.chain.get_joint_limits())
         self.theta_min = joint_lim[:,0].to(self.device)
         self.theta_max = joint_lim[:,1].to(self.device)
@@ -60,56 +55,45 @@ class PandaLayer(torch.nn.Module):
         self.dof = len(self.theta_min)
         self.meshes = self.load_meshes()
 
+    # def load_meshes(self):
+    #     mesh_files = glob.glob(self.mesh_path)
+        
+    #     mesh_files = [f for f in mesh_files if os.path.isfile(f)]
+    #     meshes = {}
+
+    #     for mesh_file in mesh_files:
+    #         if self.mesh_path.split('/')[-2]=='visual':
+    #             name = os.path.basename(mesh_file)[:-4].split('_')[0]
+    #         else:
+    #             name = os.path.basename(mesh_file)[:-4]
+    #         mesh = trimesh.load(mesh_file, force='mesh')
+    #         meshes[name] = mesh
+    #     return meshes
 
     def load_meshes(self):
-        mesh_files = []
-        for path in self.mesh_path_list:  # 新增 mesh_path_list
-            mesh_files.extend(glob.glob(path))
+        mesh_files = glob.glob(self.mesh_path)
         mesh_files = [f for f in mesh_files if os.path.isfile(f)]
-
         meshes = {}
+
         for mesh_file in mesh_files:
-            name = os.path.splitext(os.path.basename(mesh_file))[0].lower()
-            try:
-                mesh = trimesh.load(mesh_file, force='mesh')
-                if isinstance(mesh, trimesh.Trimesh):
-                    meshes[name] = mesh
-            except Exception as e:
-                print(f"Failed loading {mesh_file}: {e}")
+            name = os.path.splitext(os.path.basename(mesh_file))[0] 
+            mesh = trimesh.load(mesh_file, force='mesh')
+            meshes[name] = mesh
         return meshes
-
-
-    # def forward_kinematics(self, theta):
-    #     ret = self.chain.forward_kinematics(theta, end_only=False)
-    #     transformations = {}
-    #     for k in ret.keys():
-    #         trans_mat = ret[k].get_matrix()
-    #         transformations[k.split('_')[-1]] = trans_mat
-    #     return transformations
-    
 
     def forward_kinematics(self, theta):
         ret = self.chain.forward_kinematics(theta, end_only=False)
         transformations = {}
         for k in ret.keys():
             trans_mat = ret[k].get_matrix()
-            transformations[k] = trans_mat
+            transformations[k.split('_')[-1]] = trans_mat
         return transformations
-
-
-
+    
     def theta2mesh(self, theta):
         trans = self.forward_kinematics(theta)
-        # trans = self.add_gripper_transforms(trans)
-
         robot_mesh = []
-        # print('trans', trans.keys())
-        # print('meshes', self.meshes.keys())
-
-        # 确认meshes非空
-        for k in self.meshes.keys():
-            mesh = self.meshes[k]
-            print(f"{k}: vertices={len(mesh.vertices)}, faces={len(mesh.faces)}")
+        print('trans', trans.keys())
+        print('meshes', self.meshes.keys())
 
         for k in self.meshes.keys():
             mesh = copy.deepcopy(self.meshes[k])
@@ -130,33 +114,6 @@ class PandaLayer(torch.nn.Module):
             robot_mesh.append(mesh)
 
         return robot_mesh
-
-
-
-    def add_gripper_transforms(self, trans_dict):
-        """
-        为夹爪部分的 link 手动添加固定 transform（基于 xarm_gripper_base_link）。
-        """
-        base_tf = trans_dict.get("xarm_gripper_base_link")
-        if base_tf is None:
-            print(" xarm_gripper_base_link not found. Cannot add gripper transforms.")
-            return trans_dict
-
-        # 默认是直接附加在 base 上，简单示例；也可调整位置
-        identity = torch.eye(4, device=self.device)
-
-        gripper_links = [
-            "left_finger", "right_finger",
-            "left_inner_knuckle", "right_inner_knuckle",
-            "left_outer_knuckle", "right_outer_knuckle",
-        ]
-
-        for name in gripper_links:
-            if name not in trans_dict:
-                trans_dict[name] = base_tf @ identity  # 默认附着
-                print(f"Added fixed transform for {name}")
-
-        return trans_dict
 
 
     def forward(self, pose, theta):
@@ -431,6 +388,28 @@ if __name__ == "__main__":
     scene = trimesh.Scene()
     # theta = torch.tensor([-1.7370, -0.0455,  0.1577, -2.8271, -2.0578,  1.8342, -0.1893]).float().to(device).reshape(-1,7)
     theta = torch.tensor([-0.0, -0.0,  0.0, -0.0, -0.0,  0.0, -0.0]).float().to(device).reshape(-1,7)
+
+    trans = panda.forward_kinematics(theta)
+    # print(trans['eef'][0])
+    # pts = np.array([trans[k][0,:3,3].detach().cpu().numpy() for k in trans.keys()])
+    # print(pts)
+    # PC = trimesh.points.PointCloud(pts, colors=[255,0,0])
+    # scene.add_geometry(PC)
+
+    # load ik_q.npy
+    # robot_mesh = panda.theta2mesh(theta)
+
+    # scene.show()
+    # ik_q = np.load(os.path.join(CUR_PATH, 'ik_q.npy'))
+    # for i, q in enumerate(ik_q):
+    #     if i > 5:
+    #         break
+    #     q = torch.tensor(q).float().to(device).reshape(-1, 7)
+    #     trans = panda.forward_kinematics(q)
+    #     robot_mesh = panda.theta2mesh(q)
+    #     scene.add_geometry(robot_mesh)
+
+    # theta = ik_q[0].reshape(-1, 7)
     trans = panda.forward_kinematics(theta)
     robot_mesh = panda.theta2mesh(theta)
     scene.add_geometry(robot_mesh)

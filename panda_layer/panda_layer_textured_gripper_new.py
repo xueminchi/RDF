@@ -60,7 +60,6 @@ class PandaLayer(torch.nn.Module):
         self.dof = len(self.theta_min)
         self.meshes = self.load_meshes()
 
-
     def load_meshes(self):
         mesh_files = []
         for path in self.mesh_path_list:  # 新增 mesh_path_list
@@ -78,15 +77,6 @@ class PandaLayer(torch.nn.Module):
                 print(f"Failed loading {mesh_file}: {e}")
         return meshes
 
-
-    # def forward_kinematics(self, theta):
-    #     ret = self.chain.forward_kinematics(theta, end_only=False)
-    #     transformations = {}
-    #     for k in ret.keys():
-    #         trans_mat = ret[k].get_matrix()
-    #         transformations[k.split('_')[-1]] = trans_mat
-    #     return transformations
-    
 
     def forward_kinematics(self, theta):
         ret = self.chain.forward_kinematics(theta, end_only=False)

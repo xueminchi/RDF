@@ -14,7 +14,7 @@ import trimesh
 import utils
 import mesh_to_sdf
 import skimage
-from panda_layer.panda_layer import PandaLayer
+from panda_layer.panda_layer_textured_gripper import PandaLayer
 import argparse
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +26,7 @@ class BPSDF():
         self.domain_max = domain_max
         self.device = device    
         self.robot = robot
-        self.model_path = os.path.join(CUR_DIR, 'models')
+        self.model_path = os.path.join(CUR_DIR, 'models_xarm')
         
     def binomial_coefficient(self, n, k):
         return torch.exp(torch.lgamma(n + 1) - torch.lgamma(k + 1) - torch.lgamma(n - k + 1))
@@ -70,11 +70,34 @@ class BPSDF():
 
     def train_bf_sdf(self,epoches=200):
         # represent SDF using basis functions
-        mesh_path = os.path.join(CUR_DIR,"panda_layer/meshes/voxel_128/*")
+        # mesh_path = os.path.join(CUR_DIR,"xarm7_gripper/meshes/voxel_128/*")
+        mesh_path = os.path.join(CUR_DIR,"/home/ps/py_project/RDF/xarm_layer/meshes/*")
+        
         mesh_files = glob.glob(mesh_path)
-        mesh_files = sorted(mesh_files)[1:] #except finger
+        # mesh_files = sorted(mesh_files)[1:] #except finger
+
+        desired_order = [
+            "link0",
+            "link1",
+            "link2",
+            "link3",
+            "link4",
+            "link5",
+            "link6",
+            "link7",
+            "link8"
+        ]
+
+        mesh_map = {os.path.basename(f).split(".")[0]: f for f in mesh_files}
+
+        mesh_files_ordered = [mesh_map[name] for name in desired_order if name in mesh_map]
+
+        print("Final mesh file order:")
+        for f in mesh_files_ordered:
+            print(f)
+        
         mesh_dict = {}
-        for i,mf in enumerate(mesh_files):
+        for i,mf in enumerate(mesh_files_ordered):
             mesh_name = mf.split('/')[-1].split('.')[0]
             mesh = trimesh.load(mf)
             offset = mesh.bounding_box.centroid
@@ -254,6 +277,7 @@ class BPSDF():
         normal = normal.reshape(B,8,-1,3).transpose(1,2)
         return normal # normal size: (B,N,8,3) normal[:,:,0,:] origin normal vector normal[:,:,1:,:] derivatives with respect to joints
 
+
 if __name__ =='__main__':
 
     parser = argparse.ArgumentParser()
@@ -268,24 +292,27 @@ if __name__ =='__main__':
     bp_sdf = BPSDF(args.n_func,args.domain_min,args.domain_max,panda,args.device)
     
     # args.train = True
+
     # #  train Bernstein Polynomial model   
     if args.train:
         bp_sdf.train_bf_sdf()
 
-
+    # exit()
     # load trained model
-    model_path = f'models/BP_{args.n_func}.pt'
+    model_path = f'models_xarm/BP_{args.n_func}.pt'
     model = torch.load(model_path, weights_only=False)
     
     # visualize the Bernstein Polynomial model for each robot link
-    bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
+    # bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
 
     # visualize the Bernstein Polynomial model for the whole body
     theta = torch.tensor([0, -0.3, 0, -2.2, 0, 2.0, np.pi/4]).float().to(args.device).reshape(-1,7)
     pose = torch.from_numpy(np.identity(4)).to(args.device).reshape(-1, 4, 4).expand(len(theta),4,4).float()
     trans_list = panda.get_transformations_each_link(pose,theta)
+    trans_list = list(trans_list.values())
     utils.visualize_reconstructed_whole_body(model, trans_list, tag=f'BP_{args.n_func}')
     
+    exit()
     # run RDF 
     x = torch.rand(128,3).to(args.device)*2.0 - 1.0
     theta = torch.rand(2,7).to(args.device).float()
