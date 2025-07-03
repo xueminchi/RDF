@@ -33,7 +33,8 @@ def check_mesh_center(stl_path, method='centroid', tol=1e-6):
 
 # 示例用法
 # 改成你自己的目录
-folder = "/home/ps/py_project/RDF/xarm_layer/meshes/"
+folder = "/home/ps/py_project/RDF/collision_avoidance_example/xarm7_learned_urdf/xarm_description/meshes/xarm7/visual/"
+# folder = "/home/ps/py_project/RDF/collision_avoidance_example/xarm7_urdf/xarm_description/meshes/xarm7/visual"
 # folder = "/home/ps/py_project/RDF/panda_layer//meshes/visual/"
 stl_files = glob.glob(os.path.join(folder, "*.stl"))
 

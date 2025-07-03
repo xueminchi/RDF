@@ -70,14 +70,9 @@ class BPSDF():
 
     def train_bf_sdf(self,epoches=200):
         # represent SDF using basis functions
-        # mesh_path = os.path.join(CUR_DIR,"xarm7_gripper/meshes/voxel_128/*")
-        mesh_path = os.path.join(CUR_DIR,"/home/ps/py_project/RDF/xarm_layer/meshes/*")
-        
-        mesh_files = glob.glob(mesh_path)
-        # mesh_files = sorted(mesh_files)[1:] #except finger
-
+        # 定义你想要的顺序
         desired_order = [
-            "link0",
+            "link_base",
             "link1",
             "link2",
             "link3",
@@ -85,13 +80,14 @@ class BPSDF():
             "link5",
             "link6",
             "link7",
-            "link8"
+            "xarm_gripper_base_link"
         ]
-
+        # 获取所有文件
+        mesh_files = glob.glob(os.path.join(CUR_DIR, "xarm_layer/meshes/*.stl"))
+        # 构建 {basename: path} 映射
         mesh_map = {os.path.basename(f).split(".")[0]: f for f in mesh_files}
-
+        # 按理想顺序提取文件路径
         mesh_files_ordered = [mesh_map[name] for name in desired_order if name in mesh_map]
-
         print("Final mesh file order:")
         for f in mesh_files_ordered:
             print(f)
@@ -99,7 +95,10 @@ class BPSDF():
         mesh_dict = {}
         for i,mf in enumerate(mesh_files_ordered):
             mesh_name = mf.split('/')[-1].split('.')[0]
-            mesh = trimesh.load(mf)
+            try:
+                mesh = trimesh.load(mf)
+            except Exception as e:
+                print(f"Failed to load {mf}: {e}")
             offset = mesh.bounding_box.centroid
             scale = np.max(np.linalg.norm(mesh.vertices-offset, axis=1))
             mesh = mesh_to_sdf.scale_to_unit_sphere(mesh)
@@ -303,8 +302,8 @@ if __name__ =='__main__':
     model = torch.load(model_path, weights_only=False)
     
     # visualize the Bernstein Polynomial model for each robot link
-    # bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
-
+    bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
+    exit()
     # visualize the Bernstein Polynomial model for the whole body
     theta = torch.tensor([0, -0.3, 0, -2.2, 0, 2.0, np.pi/4]).float().to(args.device).reshape(-1,7)
     pose = torch.from_numpy(np.identity(4)).to(args.device).reshape(-1, 4, 4).expand(len(theta),4,4).float()
@@ -312,7 +311,7 @@ if __name__ =='__main__':
     trans_list = list(trans_list.values())
     utils.visualize_reconstructed_whole_body(model, trans_list, tag=f'BP_{args.n_func}')
     
-    exit()
+
     # run RDF 
     x = torch.rand(128,3).to(args.device)*2.0 - 1.0
     theta = torch.rand(2,7).to(args.device).float()

@@ -280,6 +280,9 @@ if __name__ =='__main__':
     # visualize the Bernstein Polynomial model for each robot link
     bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
 
+
+
+    exit()
     # visualize the Bernstein Polynomial model for the whole body
     theta = torch.tensor([0, -0.3, 0, -2.2, 0, 2.0, np.pi/4]).float().to(args.device).reshape(-1,7)
     pose = torch.from_numpy(np.identity(4)).to(args.device).reshape(-1, 4, 4).expand(len(theta),4,4).float()
