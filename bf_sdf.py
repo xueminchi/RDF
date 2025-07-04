@@ -164,7 +164,7 @@ class BPSDF():
                     os.mkdir(save_path)
                 trimesh.exchange.export.export_mesh(rec_mesh, os.path.join(save_path,f"{save_mesh_name}_{mesh_name}.stl"))
 
-    def get_whole_body_sdf_batch(self,x,pose,theta,model,use_derivative = True, used_links = [0,1,2,3,4,5,6,7,8],return_index=False):
+    def get_whole_body_sdf_batch(self,x,pose,theta,model,use_derivative = True, used_links = [0,1,2,3,4,5,6,7],return_index=False):
 
         B = len(theta)
         N = len(x)
