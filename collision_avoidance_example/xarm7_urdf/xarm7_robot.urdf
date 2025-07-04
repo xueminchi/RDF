@@ -20,10 +20,10 @@
   <link name="world"/>
   <joint name="world_joint" type="fixed">
     <parent link="world"/>
-    <child link="link_base"/>
+    <child link="link0"/>
     <origin rpy="0 0 0" xyz="0 0 0"/>
   </joint>
-  <link name="link_base">
+  <link name="link0">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.021131 -0.0016302 0.056488"/>
       <mass value="0.88556"/>
@@ -31,14 +31,14 @@
     </inertial>
     <visual>
       <geometry>
-        <mesh filename="package://xarm_description/meshes/xarm7/visual/link_base.stl"/>
+        <mesh filename="package://xarm_description/meshes/xarm7/visual/link0.stl"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="White"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://xarm_description/meshes/xarm7/collision/link_base.obj"/>
+        <mesh filename="package://xarm_description/meshes/xarm7/collision/link0.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -65,7 +65,7 @@
   </link>
   <joint name="joint1" type="revolute">
     <origin rpy="0 0 0" xyz="0 0 0.267"/>
-    <parent link="link_base"/>
+    <parent link="link0"/>
     <child link="link1"/>
     <axis xyz="0 0 1"/>
     <limit effort="50" lower="-6.28318530718" upper="6.28318530718" velocity="3.14"/>
@@ -321,7 +321,7 @@
       <mechanicalReduction>100</mechanicalReduction>
     </actuator>
   </transmission>
-  <gazebo reference="link_base">
+  <gazebo reference="link0">
     <selfCollide>true</selfCollide>
   </gazebo>
   <gazebo reference="link1">

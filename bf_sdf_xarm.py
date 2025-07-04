@@ -73,7 +73,7 @@ class BPSDF():
         # represent SDF using basis functions
         # 定义你想要的顺序
         desired_order = [
-            "link_base",
+            "link0",
             "link1",
             "link2",
             "link3",
@@ -186,7 +186,7 @@ class BPSDF():
                     os.mkdir(save_path)
                 trimesh.exchange.export.export_mesh(rec_mesh, os.path.join(save_path,f"{save_mesh_name}_{mesh_name}.stl"))
 
-    def get_whole_body_sdf_batch(self,x,pose,theta,model,use_derivative = True, used_links = [0,1,2,3,4,5,6,7,8],return_index=False):
+    def get_whole_body_sdf_batch(self,x,pose,theta,model,use_derivative = True, used_links = [0,1,2,3,4,5,6,7],return_index=False):
 
         B = len(theta)
         N = len(x)
@@ -195,8 +195,9 @@ class BPSDF():
         offset = offset.unsqueeze(0).expand(B,K,3).reshape(B*K,3).float()
         scale = torch.tensor([model[i]['scale'] for i in used_links],device=self.device)
         scale = scale.unsqueeze(0).expand(B,K).reshape(B*K).float()
-        trans_list = self.robot.get_transformations_each_link(pose,theta)
-
+        trans_list = self.robot.forward_kinematics(theta)
+        trans_list = list(trans_list.values())
+        trans_list = trans_list[1:]
         fk_trans = torch.cat([t.unsqueeze(1) for t in trans_list],dim=1)[:,used_links,:,:].reshape(-1,4,4) # B,K,4,4
         x_robot_frame_batch = utils.transform_points(x.float(),torch.linalg.inv(fk_trans).float(),device=self.device) # B*K,N,3
         x_robot_frame_batch_scaled = x_robot_frame_batch - offset.unsqueeze(1)
@@ -252,7 +253,7 @@ class BPSDF():
                 return sdf_value, gradient_value, idx
             return sdf_value, gradient_value
 
-    def get_whole_body_sdf_with_joints_grad_batch(self,x,pose,theta,model,used_links = [0,1,2,3,4,5,6,7,8]):
+    def get_whole_body_sdf_with_joints_grad_batch(self,x,pose,theta,model,used_links = [0,1,2,3,4,5,6,7]):
 
         delta = 0.001
         B = theta.shape[0]
@@ -265,7 +266,7 @@ class BPSDF():
         d_sdf = (sdf[:,1:,:]-sdf[:,:1,:])/delta
         return sdf[:,0,:],d_sdf.transpose(1,2)
 
-    def get_whole_body_normal_with_joints_grad_batch(self,x,pose,theta,model,used_links = [0,1,2,3,4,5,6,7,8]):
+    def get_whole_body_normal_with_joints_grad_batch(self,x,pose,theta,model,used_links = [0,1,2,3,4,5,6,7]):
         delta = 0.001
         B = theta.shape[0]
         theta = theta.unsqueeze(1)
@@ -283,14 +284,14 @@ if __name__ =='__main__':
     parser.add_argument('--device', default='cuda', type=str)
     parser.add_argument('--domain_max', default=1.0, type=float)
     parser.add_argument('--domain_min', default=-1.0, type=float)
-    parser.add_argument('--n_func', default=8, type=int)
+    parser.add_argument('--n_func', default=16, type=int)
     parser.add_argument('--train', action='store_true')
     args = parser.parse_args()
 
     panda = PandaLayer(args.device)
     bp_sdf = BPSDF(args.n_func,args.domain_min,args.domain_max,panda,args.device)
     
-    args.train = False
+    # args.train = True
 
     # #  train Bernstein Polynomial model   
     if args.train:
@@ -298,19 +299,14 @@ if __name__ =='__main__':
 
 
     # load trained model
-    model_path = f'models_xarm/BP_{args.n_func}.pt'
+    model_path = os.path.join(CUR_DIR,f'models_xarm/BP_{args.n_func}.pt')
     model = torch.load(model_path, weights_only=False)
     
-    # obseve the offset of 
-    offset = model[0]['offset'].cpu().numpy()
-    scale = model[0]['scale']
-    print(f'offset: {offset}, scale: {scale}')
-    
-    # visualize the Bernstein Polynomial model for each robot link
+    # # visualize the Bernstein Polynomial model for each robot link
     # bp_sdf.create_surface_mesh(model,nbData=128,vis=True,save_mesh_name=f'BP_{args.n_func}')
 
     # visualize the Bernstein Polynomial model for the whole body
-    theta = torch.tensor([0, -0.3, 0, -2.2, 0, 2.0, np.pi/4]).float().to(args.device).reshape(-1,7)
+    theta = torch.tensor([-0.0, -0.0,  0.0, -0.0, -0.0,  0.0, -0.0]).float().to(args.device).reshape(-1,7)
     pose = torch.from_numpy(np.identity(4)).to(args.device).reshape(-1, 4, 4).expand(len(theta),4,4).float()
 
     trans_list = panda.forward_kinematics(theta)
@@ -318,18 +314,19 @@ if __name__ =='__main__':
 
 
     trans_list = list(trans_list.values())
-    print(len(trans_list))
-    print(trans_list)
     trans_list = trans_list[1:]
     utils.visualize_reconstructed_whole_body(model, trans_list, tag=f'BP_{args.n_func}')
-    
 
     # run RDF 
-    x = torch.rand(128,3).to(args.device)*2.0 - 1.0
-    theta = torch.rand(2,7).to(args.device).float()
+    # x = torch.rand(128,3).to(args.device)*2.0 - 1.0
+    x = utils.get_surface_points(model, trans_list, tag=f'BP_{args.n_func}')
+    x = torch.from_numpy(x).to(args.device).float()
+    x = x[torch.randperm(x.shape[0])[:1000]]
+    utils.visualize_reconstructed_whole_body(model, trans_list, tag=f'BP_{args.n_func}', surface_points=x)
+
     pose = torch.from_numpy(np.identity(4)).unsqueeze(0).to(args.device).expand(len(theta),4,4).float()
     sdf,gradient = bp_sdf.get_whole_body_sdf_batch(x,pose,theta,model,use_derivative=True)
-    print('sdf:',sdf.shape,'gradient:',gradient.shape)
+    print('sdf:',sdf.max(),sdf.min(),'gradient:',gradient.shape)
     sdf,joint_grad = bp_sdf.get_whole_body_sdf_with_joints_grad_batch(x,pose,theta,model)
     print('sdf:',sdf.shape,'joint gradient:',joint_grad.shape)
 

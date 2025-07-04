@@ -14,7 +14,7 @@ import skimage
 import pyrender
 import torch
 
-mesh_path = os.path.dirname(os.path.realpath(__file__)) + "/panda_layer/meshes/visual/*.stl"
+mesh_path = os.path.dirname(os.path.realpath(__file__)) + "/xarm_layer/meshes/*.stl"
 mesh_files = glob.glob(mesh_path)
 mesh_files = sorted(mesh_files)
 print(mesh_files)

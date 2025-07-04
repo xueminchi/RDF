@@ -32,8 +32,8 @@ def save_to_mesh(vertices, faces, output_mesh_path=None):
             fp.write('f %d %d %d\n' % (face[0], face[1], face[2]))
     print('Output mesh save to: ', os.path.abspath(output_mesh_path))
 
-mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_learned_urdf/xarm_description/meshes/xarm7/visual/*.stl')
-# mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_urdf/xarm_description/meshes/xarm7/visual/*.stl')
+# mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_learned_urdf/xarm_description/meshes/xarm7/visual/*.stl')
+mp = os.path.join(CUR_PATH, '../collision_avoidance_example/xarm7_urdf/xarm_description/meshes/xarm7/visual/*.stl')
 # 
 class PandaLayer(torch.nn.Module):
     def __init__(self, device='cpu', mesh_path = mp):

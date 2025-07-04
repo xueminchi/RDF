@@ -83,7 +83,7 @@ def eval_chamfer_distance(tag):
     cd_mean,cd_max =np.mean(res,axis=0)
     return cd_mean,cd_max
 
-def visualize_reconstructed_whole_body(model, trans_list,tag):
+def visualize_reconstructed_whole_body(model, trans_list,tag, surface_points=None):
     mesh_path = os.path.join(CUR_DIR,f"output_meshes/{tag}_*.stl")
     mesh_files = glob.glob(mesh_path)
     mesh_files.sort()
@@ -91,6 +91,7 @@ def visualize_reconstructed_whole_body(model, trans_list,tag):
     scene = trimesh.Scene()
     for i,mf in enumerate(mesh_files):
         mesh = trimesh.load(mf)
+        mesh_name = mf.split('_')[-1].split('.')[0]
         mesh_dict = model[i]
         offset = mesh_dict['offset'].cpu().numpy()
         scale = mesh_dict['scale']
@@ -98,7 +99,35 @@ def visualize_reconstructed_whole_body(model, trans_list,tag):
         mesh.apply_transform(trans_list[i].squeeze().cpu().numpy())
         mesh.apply_transform(view_mat)
         scene.add_geometry(mesh)
+
+    # 如果有 surface_points 传入
+    if surface_points is not None:
+        if isinstance(surface_points, torch.Tensor):
+            surface_points = surface_points.detach().cpu().numpy()
+        surface_points_h = np.hstack([surface_points, np.ones((surface_points.shape[0], 1))])
+        surface_points_view = (view_mat @ surface_points_h.T).T[:, :3]
+        cloud = trimesh.points.PointCloud(surface_points_view, colors=[255, 0, 0, 255] )
+        scene.add_geometry(cloud)
+
     scene.show()
+
+def get_surface_points(model, trans_list,tag):
+    mesh_path = os.path.join(CUR_DIR,f"output_meshes/{tag}_*.stl")
+    mesh_files = glob.glob(mesh_path)
+    mesh_files.sort()
+    surface_points = []
+    for i,mf in enumerate(mesh_files):
+        mesh = trimesh.load(mf)
+        mesh_name = mf.split('_')[-1].split('.')[0]
+        mesh_dict = model[i]
+        offset = mesh_dict['offset'].cpu().numpy()
+        scale = mesh_dict['scale']
+        mesh.vertices = mesh.vertices*scale + offset
+        mesh.apply_transform(trans_list[i].squeeze().cpu().numpy())
+        surface_points.append(mesh.vertices)
+    surface_points = np.concatenate(surface_points,axis=0)
+    return surface_points
+    
 
 def rotation_matrix_from_vectors(vec1, vec2):
     """ Find the rotation matrix that aligns vec1 to vec2

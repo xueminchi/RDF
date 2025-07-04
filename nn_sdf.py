@@ -94,7 +94,7 @@ class NNSDF():
             model_k = mesh_dict['model'].to(self.device)
             model_k.eval()
             domain = torch.linspace(-1.0,1.0,nbData).to(self.device)
-            grid_x, grid_y, grid_z= torch.meshgrid(domain,domain,domain)
+            grid_x, grid_y, grid_z= torch.meshgrid(domain,domain,domain, indexing='ij')
             grid_x, grid_y, grid_z = grid_x.reshape(-1,1), grid_y.reshape(-1,1), grid_z.reshape(-1,1)
             p = torch.cat([grid_x, grid_y, grid_z],dim=1).float().to(self.device)   
             # split data to deal with memory issues
@@ -182,7 +182,7 @@ if  __name__ =='__main__':
 
     # visualize the Bernstein Polynomial model for each robot link
     model_path = f'models/NN_AD.pt'
-    model = torch.load(model_path)
+    model = torch.load(model_path, weights_only=False)
     nn_sdf.create_surface_mesh(model,nbData=128,vis=True)
 
     # run nn sdf model

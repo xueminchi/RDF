@@ -22,7 +22,7 @@ class BBOPlanner():
         self.theta_max = self.robot.theta_max_soft
         self.theta_min = self.robot.theta_min_soft
         self.bp_sdf = bf_sdf.BPSDF(n_func,domain_min,domain_max,robot,device)
-        self.model = torch.load(f'models/BP_8.pt')
+        self.model = torch.load(f'models/BP_8.pt', weights_only=False)
         self.object_mesh = self.load_box_object()
         self.object_internal_points = self.compute_internal_points(num=5,use_surface_points=False)
         self.contact_points = self.compute_contact_points()
